@@ -1,23 +1,22 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Tab, BraynerState } from './types.ts';
-import Layout from './components/Layout.tsx';
-import HomeScreen from './screens/HomeScreen.tsx';
-import PracticeScreen from './screens/PracticeScreen.tsx';
-import PlanScreen from './screens/PlanScreen.tsx';
-import ProgressScreen from './screens/ProgressScreen.tsx';
-import ProfileScreen from './screens/ProfileScreen.tsx';
-import SplashScreen from './screens/SplashScreen.tsx';
-import SettingsScreen from './screens/SettingsScreen.tsx';
-import FocusScreen from './screens/FocusScreen.tsx';
-import VaultScreen from './screens/VaultScreen.tsx';
-import XPLevelScreen from './screens/XPLevelScreen.tsx';
-import ProgressReportScreen from './screens/ProgressReportScreen.tsx';
-import CoachScreen from './screens/CoachScreen.tsx';
-import AuthScreen from './screens/AuthScreen.tsx';
-import { getState, isAuthenticated } from './services/localEngine.ts';
-import { applyTheme } from './services/settingsService.ts';
-import { logout } from './services/authService.ts';
+import { Tab, BraynerState } from './types';
+import Layout from './components/Layout';
+import HomeScreen from './screens/HomeScreen';
+import PracticeScreen from './screens/PracticeScreen';
+import PlanScreen from './screens/PlanScreen';
+import ProgressScreen from './screens/ProgressScreen';
+import ProfileScreen from './screens/ProfileScreen';
+import SplashScreen from './screens/SplashScreen';
+import SettingsScreen from './screens/SettingsScreen';
+import FocusScreen from './screens/FocusScreen';
+import VaultScreen from './screens/VaultScreen';
+import XPLevelScreen from './screens/XPLevelScreen';
+import ProgressReportScreen from './screens/ProgressReportScreen';
+import CoachScreen from './screens/CoachScreen';
+import AuthScreen from './screens/AuthScreen';
+import { getState, isAuthenticated } from './services/localEngine';
+import { applyTheme } from './services/settingsService';
+import { logout } from './services/authService';
 
 const VALID_TABS: Tab[] = [
   'home', 'practice', 'plan', 'progress', 'profile', 

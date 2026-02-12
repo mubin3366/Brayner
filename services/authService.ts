@@ -1,6 +1,5 @@
-
-import { getState, updateState } from './localEngine.ts';
-import { BraynerState } from '../types.ts';
+import { getState, updateState } from './localEngine';
+import { BraynerState } from '../types';
 
 export interface AuthUser {
   id: string;

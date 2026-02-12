@@ -1,8 +1,7 @@
-
-import { UserProgress, DisciplineTask, RevisionItem } from '../types.ts';
-import { getState, updateState } from './localEngine.ts';
-import { generateDailyTasks } from './taskEngine.ts';
-import { addXP } from './xpService.ts';
+import { UserProgress, DisciplineTask, RevisionItem } from '../types';
+import { getState, updateState } from './localEngine';
+import { generateDailyTasks } from './taskEngine';
+import { addXP } from './xpService';
 
 const getTodayISO = () => new Date().toISOString().split('T')[0];
 

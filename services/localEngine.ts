@@ -1,5 +1,4 @@
-
-import { BraynerState } from '../types.ts';
+import { BraynerState } from '../types';
 
 const APP_KEY = 'braynerApp';
 
@@ -55,7 +54,6 @@ export const getState = (): BraynerState => {
     const stored = localStorage.getItem(APP_KEY);
     if (!stored) return DEFAULT_STATE;
     const parsed = JSON.parse(stored);
-    // Deep merge with DEFAULT_STATE to ensure new fields are populated if they don't exist in local storage
     return {
       ...DEFAULT_STATE,
       ...parsed,
