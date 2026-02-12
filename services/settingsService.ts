@@ -24,7 +24,10 @@ export const applyTheme = (theme: AppSettings['theme']) => {
 };
 
 export const getEffectiveLanguage = (lang: Language): 'en' | 'bn' => {
+  // Priority: User Setting -> Bangla (Default)
   if (lang === 'bn') return 'bn';
   if (lang === 'en') return 'en';
+  
+  // Default for BRAYNER is always Bangla
   return 'bn';
 };

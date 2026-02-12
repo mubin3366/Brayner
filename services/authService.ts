@@ -1,14 +1,20 @@
 
-import { getState, updateState } from './localEngine';
-import { AuthUser, BraynerState } from '../types';
+import { getState, updateState } from './localEngine.ts';
+import { BraynerState } from '../types.ts';
+
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  academicLevel: 'SSC' | 'HSC';
+  isGuest: boolean;
+}
 
 export const signup = async (userData: { name: string, email: string, password?: string, academicLevel: 'SSC' | 'HSC' }): Promise<AuthUser> => {
   const state = getState();
   const normalizedEmail = userData.email.toLowerCase().trim();
   
-  // Strict Duplicate Check
-  if (state.users.find((u: any) => u.email === normalizedEmail)) {
-    console.error("[BRAYNER AUTH] Signup failed: Email already exists.");
+  if (state.user.registered.find((u: any) => u.email === normalizedEmail)) {
     throw new Error('EMAIL_EXISTS');
   }
 
@@ -29,52 +35,53 @@ export const signup = async (userData: { name: string, email: string, password?:
   };
 
   updateState({
-    users: [...state.users, newUser],
-    user: authUser
+    user: {
+      ...state.user,
+      registered: [...state.user.registered, newUser],
+      current: { ...authUser, assessment: undefined }
+    }
   });
   
-  console.log("[BRAYNER AUTH] User registered successfully:", normalizedEmail);
   return authUser;
 };
 
 export const login = async (email: string, password?: string): Promise<AuthUser | null> => {
   const state = getState();
   const normalizedEmail = email.toLowerCase().trim();
+  const user = state.user.registered.find((u: any) => u.email === normalizedEmail && u.password === password);
   
-  // Exact Match Check
-  const user = state.users.find((u: any) => u.email === normalizedEmail && u.password === password);
-  
-  if (!user) {
-    console.warn("[BRAYNER AUTH] Login attempt failed for:", normalizedEmail);
-    return null;
-  }
+  if (!user) return null;
 
   const authUser: AuthUser = {
     id: user.id,
     name: user.name,
     email: user.email,
     academicLevel: user.academicLevel || 'SSC',
-    isGuest: false,
-    assessment: user.assessment
+    isGuest: false
   };
 
   updateState({
-    user: authUser
+    user: {
+      ...state.user,
+      current: { ...authUser, assessment: user.assessment }
+    }
   });
 
-  console.log("[BRAYNER AUTH] User logged in:", normalizedEmail);
   return authUser;
 };
 
 export const logout = async () => {
+  const state = getState();
   updateState({
-    user: null
+    user: {
+      ...state.user,
+      current: null
+    }
   });
-  console.log("[BRAYNER AUTH] User logged out.");
   return Promise.resolve();
 };
 
 export const getCurrentUser = (): AuthUser | null => {
   const state = getState();
-  return state.user;
+  return state.user.current;
 };

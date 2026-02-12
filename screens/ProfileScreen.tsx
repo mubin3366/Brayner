@@ -16,7 +16,6 @@ interface ProfileScreenProps {
 type ProfileView = 'profile' | 'personal' | 'resources' | 'security';
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onSettingsChange, onNavigate }) => {
-  // Always fetch fresh state on render
   const os = getState();
   const [view, setView] = useState<ProfileView>('profile');
   const lang = getEffectiveLanguage(os.preferences.language);
@@ -32,15 +31,11 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onSettingsChang
   const handleAddResource = (res: any) => {
     const updatedResources = [...os.vault.resources, { ...res, id: Date.now().toString() }];
     updateState({ vault: { ...os.vault, resources: updatedResources } });
-    // Trigger re-render in App.tsx
-    onSettingsChange();
   };
 
   const handleDeleteResource = (id: string) => {
     const updatedResources = os.vault.resources.filter(r => r.id !== id);
     updateState({ vault: { ...os.vault, resources: updatedResources } });
-    // Trigger re-render in App.tsx
-    onSettingsChange();
   };
 
   if (view === 'personal') {
@@ -56,13 +51,10 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onSettingsChang
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Name</label>
             <input 
-              // Fix: os.user is AuthUser, removing .current access
-              defaultValue={os.user?.name || ''}
+              defaultValue={os.user.current?.name || ''}
               onBlur={e => {
-                if (os.user) {
-                  // Fix: Update user directly without .current property
-                  updateState({ user: { ...os.user, name: e.target.value } });
-                  onSettingsChange();
+                if (os.user.current) {
+                  updateState({ user: { ...os.user, current: { ...os.user.current, name: e.target.value } } });
                 }
               }}
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm outline-none dark:text-slate-200"
@@ -72,18 +64,18 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onSettingsChang
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Daily Goal (Hours)</label>
             <input 
               type="number"
-              // Fix: Direct access to os.user assessment
-              defaultValue={os.user?.assessment?.studyGoal || 4}
+              defaultValue={os.user.current?.assessment?.studyGoal || 4}
               onBlur={e => {
-                if (os.user?.assessment) {
-                  // Fix: Proper nested object update for AuthUser assessment property
+                if (os.user.current?.assessment) {
                   updateState({ 
                     user: { 
                       ...os.user, 
-                      assessment: { ...os.user.assessment, studyGoal: parseInt(e.target.value) || 4 } 
+                      current: { 
+                        ...os.user.current, 
+                        assessment: { ...os.user.current.assessment, studyGoal: parseInt(e.target.value) || 4 } 
+                      } 
                     } 
                   });
-                  onSettingsChange();
                 }
               }}
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm outline-none dark:text-slate-200"
@@ -168,13 +160,11 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onSettingsChang
       
       <div className="flex items-center gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
         <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center overflow-hidden border-2 border-indigo-100">
-          {/* Fix: Direct access to os.user.name */}
-          <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${os.user?.name || 'User'}`} alt="Avatar" className="w-full h-full object-cover" />
+          <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${os.user.current?.name || 'User'}`} alt="Avatar" className="w-full h-full object-cover" />
         </div>
         <div>
-          {/* Fix: Direct access to user metadata */}
-          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">{os.user?.name || 'New Learner'}</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">{os.user?.academicLevel} • Level {getLevelInfo(os.stats.xp).level}</p>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">{os.user.current?.name || 'New Learner'}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{os.user.current?.academicLevel} • Level {getLevelInfo(os.stats.xp).level}</p>
         </div>
       </div>
 

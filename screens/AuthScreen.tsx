@@ -2,11 +2,10 @@
 import React, { useState } from 'react';
 import { ChevronRight, PenTool, User, UserPlus, Zap, ArrowLeft, CheckCircle2, Sparkles, GraduationCap, Mail, Lock } from 'lucide-react';
 import { login, signup } from '../services/authService';
-// Fix: Import Language type for correct casting in finalState object
-import { AssessmentData, Language } from '../types';
+import { AssessmentData } from '../types';
 import { SUBJECTS } from '../constants';
 import { generateComebackPlan, getDisciplineMode } from '../services/onboardingService';
-import { getState, saveState, DEFAULT_STATE } from '../services/localEngine';
+import { saveState, DEFAULT_STATE } from '../services/localEngine';
 import { getSettings, getEffectiveLanguage } from '../services/settingsService';
 import { translations } from '../locales/translations';
 
@@ -28,6 +27,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthComplete }) => {
   const lang = getEffectiveLanguage(settings.language);
   const t = translations[lang];
   
+  // Assessment State
   const [assessment, setAssessment] = useState<AssessmentData>({
     academicLevel: 'SSC',
     targetExam: '',
@@ -81,19 +81,26 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthComplete }) => {
       setTimeout(async () => {
         const plans = generateComebackPlan(assessment);
         const disciplineMode = getDisciplineMode(assessment.primaryProblem);
-        const currentState = getState(); // Get state containing registered users
-
-        const finalState = {
-          ...currentState, // Keep registered users
+        
+        // Initialize user OS for the session
+        saveState({
+          ...DEFAULT_STATE,
           user: {
-            ...newUser,
-            assessment: assessment
+            ...DEFAULT_STATE.user,
+            current: {
+              id: newUser.id,
+              name: name,
+              email: email,
+              academicLevel: assessment.academicLevel,
+              isGuest: false,
+              assessment: assessment
+            }
           },
           plan: {
             ...DEFAULT_STATE.plan,
             personalizedPlans: plans,
-            planStarted: false,
-            planStartDate: '',
+            planStarted: false,      // Logic: Start as false to trigger the program start button
+            planStartDate: '',      // Logic: Will be set when user clicks start on Home
             currentUnlockedDay: 1
           },
           stats: {
@@ -106,13 +113,11 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthComplete }) => {
           },
           preferences: {
             ...DEFAULT_STATE.preferences,
-            // Fix: Cast 'bn' to Language type to avoid inference as string
-            language: 'bn' as Language,
+            language: 'bn',
             disciplineMode: disciplineMode
           }
-        };
-
-        saveState(finalState);
+        });
+        
         onAuthComplete();
       }, 2800);
       
@@ -156,7 +161,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthComplete }) => {
   if (view === 'login') {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 flex flex-col items-center justify-center">
-        <div className="w-full max-sm space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+        <div className="w-full max-w-sm space-y-8 animate-in slide-in-from-bottom-4 duration-500">
           <button onClick={() => setView('entry')} className="flex items-center gap-2 text-slate-400 font-bold uppercase text-[10px] tracking-widest"><ArrowLeft className="w-4 h-4" /> {t.back}</button>
           <div className="space-y-1">
             <h1 className="text-2xl font-black text-indigo-950 dark:text-indigo-400 uppercase tracking-tighter">{t.welcomeBack}</h1>

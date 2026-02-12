@@ -1,33 +1,34 @@
 
-import React, { useState, useMemo } from 'react';
-import { CheckCircle2, Lock, Sparkles, AlertCircle, Zap } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckCircle2, Lock, ChevronRight, ShieldAlert, Sparkles, AlertCircle, Zap } from 'lucide-react';
 import { getCurrentUser } from '../services/authService';
 import { getSettings, getEffectiveLanguage } from '../services/settingsService';
 import { translations } from '../locales/translations';
 import { getProgress, startProgram } from '../services/disciplineEngine';
-import { Tab, BraynerState } from '../types';
+import { Tab } from '../types';
+import { getState } from '../services/localEngine';
 
 interface PlanScreenProps {
-  appState: BraynerState;
   onNavigate?: (tab: Tab) => void;
-  onUpdate?: () => void;
 }
 
-const PlanScreen: React.FC<PlanScreenProps> = ({ appState, onNavigate, onUpdate }) => {
-  // Derive progress from the central state passed as prop
-  const progress = useMemo(() => getProgress(appState), [appState]);
+const PlanScreen: React.FC<PlanScreenProps> = ({ onNavigate }) => {
+  const os = getState();
+  const [progress, setProgress] = useState(getProgress());
   const user = getCurrentUser();
-  const lang = getEffectiveLanguage(appState.preferences.language);
+  const settings = getSettings();
+  const lang = getEffectiveLanguage(settings.language);
   const t = translations[lang];
 
   const handleStartProgram = () => {
-    // startProgram returns the updated state after saving to storage
-    startProgram();
-    if (onUpdate) onUpdate();
+    const next = startProgram();
+    setProgress(next);
   };
 
+  // Logic: Progression depends on currentUnlockedDay (progress.currentDay)
+  // Rule: If planStarted is true, currentUnlockedDay must be at least 1.
   const currentUnlockedDay = progress.planStarted ? (progress.currentDay || 1) : 0;
-  const plans = appState.plan.personalizedPlans.length > 0 ? appState.plan.personalizedPlans : [];
+  const plans = os.plan.personalizedPlans.length > 0 ? os.plan.personalizedPlans : [];
 
   return (
     <div className="space-y-6 animate-in slide-in-from-right-10 duration-500 relative pb-10">
@@ -42,6 +43,7 @@ const PlanScreen: React.FC<PlanScreenProps> = ({ appState, onNavigate, onUpdate 
         </div>
       </div>
 
+      {/* Start Button inside Plan page if not started */}
       {!progress.planStarted && (
         <div className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] shadow-sm border border-indigo-100 dark:border-indigo-900/30 text-center space-y-6 mb-8 animate-in zoom-in-95 duration-500">
           <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto shadow-xl shadow-indigo-100 dark:shadow-none">
@@ -63,6 +65,11 @@ const PlanScreen: React.FC<PlanScreenProps> = ({ appState, onNavigate, onUpdate 
 
       <div className="space-y-4">
         {plans.map((plan) => {
+          // Unlock Rules:
+          // 1. If dayNumber < currentUnlockedDay -> show completed/missed
+          // 2. If dayNumber === currentUnlockedDay -> show active/unlocked
+          // 3. If dayNumber > currentUnlockedDay -> keep locked
+          
           const isCurrent = progress.planStarted && plan.day === currentUnlockedDay;
           const isPast = progress.planStarted && plan.day < currentUnlockedDay;
           const isLocked = !progress.planStarted || plan.day > currentUnlockedDay;

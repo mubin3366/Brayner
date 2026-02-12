@@ -1,11 +1,13 @@
 
-import { BraynerState } from '../types';
+import { BraynerState } from '../types.ts';
 
 const APP_KEY = 'braynerApp';
 
 export const DEFAULT_STATE: BraynerState = {
-  user: null,
-  users: [],
+  user: {
+    current: null,
+    registered: []
+  },
   plan: {
     planStarted: false,
     planStartDate: '',
@@ -49,19 +51,34 @@ export const DEFAULT_STATE: BraynerState = {
 };
 
 export const getState = (): BraynerState => {
-  const stored = localStorage.getItem(APP_KEY);
-  if (!stored) return DEFAULT_STATE;
   try {
-    return JSON.parse(stored);
+    const stored = localStorage.getItem(APP_KEY);
+    if (!stored) return DEFAULT_STATE;
+    const parsed = JSON.parse(stored);
+    // Deep merge with DEFAULT_STATE to ensure new fields are populated if they don't exist in local storage
+    return {
+      ...DEFAULT_STATE,
+      ...parsed,
+      user: { ...DEFAULT_STATE.user, ...parsed.user },
+      plan: { ...DEFAULT_STATE.plan, ...parsed.plan },
+      tasks: { ...DEFAULT_STATE.tasks, ...parsed.tasks },
+      stats: { ...DEFAULT_STATE.stats, ...parsed.stats },
+      vault: { ...DEFAULT_STATE.vault, ...parsed.vault },
+      preferences: { ...DEFAULT_STATE.preferences, ...parsed.preferences },
+      coach: { ...DEFAULT_STATE.coach, ...parsed.coach }
+    };
   } catch (e) {
+    console.error("Critical error reading app state from localStorage:", e);
     return DEFAULT_STATE;
   }
 };
 
 export const saveState = (state: BraynerState) => {
-  localStorage.setItem(APP_KEY, JSON.stringify(state));
-  // In a real app we might want to trigger a 'storage' event here for cross-tab sync
-  // window.dispatchEvent(new Event('storage')); 
+  try {
+    localStorage.setItem(APP_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.error("Critical error saving app state to localStorage:", e);
+  }
 };
 
 export const updateState = (updates: Partial<BraynerState>) => {
@@ -75,12 +92,16 @@ export const resetState = () => {
   const current = getState();
   const next = { 
     ...DEFAULT_STATE, 
-    users: current.users 
+    user: { ...DEFAULT_STATE.user, registered: current.user.registered } 
   };
   saveState(next);
 };
 
 export const isAuthenticated = (): boolean => {
-  const state = getState();
-  return !!state.user && state.plan.personalizedPlans.length > 0;
+  try {
+    const state = getState();
+    return !!state.user.current && state.plan.personalizedPlans.length > 0;
+  } catch (e) {
+    return false;
+  }
 };

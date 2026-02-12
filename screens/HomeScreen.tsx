@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Play, 
   TrendingUp, 
@@ -17,14 +17,16 @@ import {
   ChevronRight,
   GraduationCap,
   Award,
-  ShieldAlert
+  ShieldAlert,
+  Sparkles
 } from 'lucide-react';
 import { SUBJECTS, SUBJECT_ICONS } from '../constants';
-import { getProgress, completeTask, addStudyMinutes, advanceDay, getDisciplineLevel } from '../services/disciplineEngine';
-import { UserProgress, Tab, BraynerState } from '../types';
+import { getProgress, completeTask, addStudyMinutes, advanceDay, getDisciplineLevel, startProgram } from '../services/disciplineEngine';
+import { UserProgress, Tab, DayPlan } from '../types';
 import { getSettings, getEffectiveLanguage } from '../services/settingsService';
 import { translations } from '../locales/translations';
 import { sendNotification } from '../services/notificationService';
+import { getState } from '../services/localEngine';
 
 const TASK_ICON_MAP: Record<string, any> = {
   Target: Target,
@@ -35,21 +37,18 @@ const TASK_ICON_MAP: Record<string, any> = {
 };
 
 interface HomeScreenProps {
-  appState: BraynerState;
   setActiveTab: (tab: Tab) => void;
-  onUpdate?: () => void;
 }
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ appState, setActiveTab, onUpdate }) => {
-  // Derive progress from the central state passed as prop
-  const progress = useMemo(() => getProgress(appState), [appState]);
-  const disciplineLevel = useMemo(() => getDisciplineLevel(appState), [appState]);
-  
+const HomeScreen: React.FC<HomeScreenProps> = ({ setActiveTab }) => {
+  const os = getState();
+  const [progress, setProgress] = useState<UserProgress>(getProgress());
   const [isStudying, setIsStudying] = useState(false);
   const [studyTime, setStudyTime] = useState(0);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const lang = getEffectiveLanguage(appState.preferences.language);
+  const settings = getSettings();
+  const lang = getEffectiveLanguage(settings.language);
   const t = translations[lang];
 
   useEffect(() => {
@@ -68,7 +67,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ appState, setActiveTab, onUpdat
       addStudyMinutes(mins);
       setIsStudying(false);
       setStudyTime(0);
-      if (onUpdate) onUpdate();
+      setProgress(getProgress());
     } else {
       setIsStudying(true);
     }
@@ -76,12 +75,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ appState, setActiveTab, onUpdat
 
   const toggleTask = (id: string) => {
     completeTask(id);
-    if (onUpdate) onUpdate();
+    setProgress(getProgress());
   };
 
   const handleAdvanceDay = () => {
     advanceDay();
-    if (onUpdate) onUpdate();
+    const updatedProgress = getProgress();
+    setProgress(updatedProgress);
     
     sendNotification(
       lang === 'bn' ? 'দিনের কাজ সম্পন্ন!' : 'Day Completed!',
@@ -91,6 +91,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ appState, setActiveTab, onUpdat
 
   const tasks = progress.dailyTasks || [];
   const allTasksDone = tasks.length > 0 && tasks.every(task => progress.completedTasks.includes(task.id));
+  const disciplineLevel = getDisciplineLevel();
 
   const drawerMenu: { id: Tab; label: string; icon: React.ReactNode; color: string }[] = [
     { id: 'coach', label: t.coachTitle, icon: <GraduationCap className="w-5 h-5" />, color: 'text-indigo-900' },
@@ -100,6 +101,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ appState, setActiveTab, onUpdat
     { id: 'report', label: t.reportLabel, icon: <FileText className="w-5 h-5" />, color: 'text-teal-600' },
     { id: 'settings', label: t.settings, icon: <SettingsIcon className="w-5 h-5" />, color: 'text-slate-600' },
   ];
+
+  const handleMenuClick = (tabId: Tab) => {
+    setIsDrawerOpen(false);
+    setActiveTab(tabId);
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-10">
@@ -129,7 +135,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ appState, setActiveTab, onUpdat
               {drawerMenu.map((item, idx) => (
                 <button 
                   key={idx}
-                  onClick={() => { setIsDrawerOpen(false); setActiveTab(item.id); }}
+                  onClick={() => handleMenuClick(item.id)}
                   className={`w-full flex items-center justify-between p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all active:scale-[0.98] group ${item.id === 'coach' ? 'bg-indigo-50/50 dark:bg-indigo-950/20' : ''}`}
                 >
                   <div className="flex items-center gap-4">
@@ -164,6 +170,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ appState, setActiveTab, onUpdat
           </button>
         </div>
 
+        {/* BRAYNER Logo - Centered and Enlarged */}
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center shadow-md">
             <PenTool className="w-5 h-5 text-white" />
@@ -206,7 +213,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ appState, setActiveTab, onUpdat
               </div>
               <div className="text-right">
                 <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-3 py-1.5 rounded-full">
-                  {isStudying ? `${t.active}: ${Math.floor(studyTime / 60)}m` : `${t.est} ${appState.user.current?.assessment?.studyGoal || 0}h`}
+                  {isStudying ? `${t.active}: ${Math.floor(studyTime / 60)}m` : `${t.est} ${os.user.current?.assessment?.studyGoal || 0}h`}
                 </span>
               </div>
             </div>

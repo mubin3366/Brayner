@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Send, GraduationCap, Loader2, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Send, GraduationCap, Loader2, RotateCcw, Sparkles, Brain, Lightbulb } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { ChatMessage } from '../types';
 import { getSettings, getEffectiveLanguage } from '../services/settingsService';

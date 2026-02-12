@@ -1,15 +1,16 @@
 
-import { UserProgress, DisciplineTask, RevisionItem, BraynerState } from '../types';
-import { getState, updateState, saveState } from './localEngine';
-import { generateDailyTasks } from './taskEngine';
-import { addXP } from './xpService';
+import { UserProgress, DisciplineTask, RevisionItem } from '../types.ts';
+import { getState, updateState } from './localEngine.ts';
+import { generateDailyTasks } from './taskEngine.ts';
+import { addXP } from './xpService.ts';
 
-const getTodayKey = () => new Date().toISOString().split('T')[0];
+const getTodayISO = () => new Date().toISOString().split('T')[0];
 
-export const syncStateWithDate = (state: BraynerState): BraynerState => {
+const syncAndGetState = () => {
+  const state = getState();
   if (!state.plan.planStarted || !state.plan.planStartDate) return state;
 
-  const todayStr = getTodayKey();
+  const todayStr = getTodayISO();
   const today = new Date(todayStr);
   const start = new Date(state.plan.planStartDate);
   
@@ -35,41 +36,37 @@ export const syncStateWithDate = (state: BraynerState): BraynerState => {
       plan: { ...state.plan, currentUnlockedDay: realDay },
       stats: { ...state.stats, missedDays: updatedMissed }
     };
-    saveState(nextState);
+    updateState(nextState);
     return nextState;
   }
 
   return state;
 };
 
-export const getProgress = (providedState?: BraynerState): UserProgress => {
-  const rawState = providedState || getState();
-  const state = syncStateWithDate(rawState);
-  const todayKey = getTodayKey();
+export const getProgress = (): UserProgress => {
+  const state = syncAndGetState();
+  const todayDate = new Date().toDateString();
+  const todayISO = getTodayISO();
 
-  let tasksForToday = state.tasks.byDate[todayKey] || [];
+  let tasksForToday = state.tasks.byDate[todayDate];
   let completedToday = state.tasks.completedToday;
 
-  if (state.stats.lastActiveDate !== todayKey) {
-    if (state.user?.assessment) {
-      tasksForToday = generateDailyTasks(state.user.assessment, state.stats.missedDays.length > 0);
+  if (state.stats.lastActiveDate !== todayDate) {
+    if (!tasksForToday && state.user.current?.assessment) {
+      tasksForToday = generateDailyTasks(state.user.current.assessment, state.stats.missedDays.length > 0);
       completedToday = [];
-      
-      const newState = {
-        ...state,
+      updateState({
         tasks: {
           ...state.tasks,
           completedToday: [],
-          byDate: { ...state.tasks.byDate, [todayKey]: tasksForToday }
+          byDate: { ...state.tasks.byDate, [todayDate]: tasksForToday }
         },
         stats: {
           ...state.stats,
-          lastActiveDate: todayKey,
+          lastActiveDate: todayDate,
           totalMinutesToday: 0
         }
-      };
-      saveState(newState);
-      return getProgress(newState);
+      });
     }
   }
 
@@ -80,7 +77,7 @@ export const getProgress = (providedState?: BraynerState): UserProgress => {
     currentPlanDay: effectiveUnlockedDay,
     streak: state.stats.streak || state.stats.completedDays.length,
     completedTasks: completedToday,
-    dailyTasks: tasksForToday,
+    dailyTasks: tasksForToday || [],
     tasksByDate: state.tasks.byDate,
     isRecoveryMode: state.stats.missedDays.length > 0,
     totalMinutesToday: state.stats.totalMinutesToday,
@@ -96,45 +93,36 @@ export const getProgress = (providedState?: BraynerState): UserProgress => {
   };
 };
 
-export const startProgram = (): BraynerState => {
-  console.log("[BRAYNER] Executing startProgram...");
+export const startProgram = (): UserProgress => {
   const state = getState();
-  const todayKey = getTodayKey();
+  const todayISO = getTodayISO();
+  const todayDate = new Date().toDateString();
 
-  if (!state.user?.assessment) {
-    console.warn("[BRAYNER] Cannot start program: No assessment found.");
-    return state;
-  }
+  const dailyTasks = state.user.current?.assessment ? generateDailyTasks(state.user.current.assessment, false) : [];
 
-  console.log("[BRAYNER] Generating tasks for today:", todayKey);
-  const dailyTasks = generateDailyTasks(state.user.assessment, false);
-
-  const updatedState: BraynerState = {
-    ...state,
+  updateState({
     plan: {
       ...state.plan,
       planStarted: true,
-      planStartDate: todayKey,
+      planStartDate: todayISO,
       currentUnlockedDay: 1
     },
     tasks: {
       ...state.tasks,
       completedToday: [],
-      byDate: { ...state.tasks.byDate, [todayKey]: dailyTasks }
+      byDate: { [todayDate]: dailyTasks }
     },
     stats: {
       ...state.stats,
-      lastActiveDate: todayKey,
+      lastActiveDate: todayDate,
       totalMinutesToday: 0,
       streak: 0,
       completedDays: [],
       missedDays: []
     }
-  };
+  });
 
-  saveState(updatedState);
-  console.log("[BRAYNER] Program started and tasks saved for:", todayKey);
-  return updatedState;
+  return getProgress();
 };
 
 export const completeTask = async (taskId: string) => {
@@ -163,8 +151,8 @@ export const advanceDay = async () => {
   const state = getState();
   if (!state.plan.planStarted) return;
 
-  const todayKey = getTodayKey();
-  if (state.stats.lastCompletedDate === todayKey) return;
+  const todayISO = getTodayISO();
+  if (state.stats.lastCompletedDate === todayISO) return;
 
   const completedDays = [...state.stats.completedDays];
   if (!completedDays.includes(state.plan.currentUnlockedDay)) {
@@ -175,16 +163,16 @@ export const advanceDay = async () => {
     stats: {
       ...state.stats,
       completedDays,
-      lastCompletedDate: todayKey,
+      lastCompletedDate: todayISO,
       streak: state.stats.streak + 1
     }
   });
 };
 
-export const getDisciplineLevel = (providedState?: BraynerState): 'Low' | 'Medium' | 'High' => {
-  const state = providedState || getState();
-  const todayKey = getTodayKey();
-  const tasks = state.tasks.byDate[todayKey] || [];
+export const getDisciplineLevel = (): 'Low' | 'Medium' | 'High' => {
+  const state = getState();
+  const todayDate = new Date().toDateString();
+  const tasks = state.tasks.byDate[todayDate] || [];
   const completed = state.tasks.completedToday || [];
   if (tasks.length === 0) return 'Low';
   const score = (completed.length / tasks.length) * 100;

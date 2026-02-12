@@ -6,30 +6,26 @@ import { getNotes, saveNote, deleteNote } from '../services/vaultService';
 
 interface VaultScreenProps {
   onBack: () => void;
-  onUpdate?: () => void;
 }
 
-const VaultScreen: React.FC<VaultScreenProps> = ({ onBack, onUpdate }) => {
-  // Always fetch fresh state on render
-  const notes = getNotes();
+const VaultScreen: React.FC<VaultScreenProps> = ({ onBack }) => {
+  const [notes, setNotes] = useState<Note[]>(getNotes());
   const [isAdding, setIsAdding] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
 
   const handleSave = () => {
     if (!title || !content) return;
-    saveNote(title, content);
+    const updated = saveNote(title, content);
+    setNotes(updated);
     setTitle('');
     setContent('');
     setIsAdding(false);
-    // Trigger global state refresh
-    if (onUpdate) onUpdate();
   };
 
   const handleDelete = (id: string) => {
-    deleteNote(id);
-    // Trigger global state refresh
-    if (onUpdate) onUpdate();
+    const updated = deleteNote(id);
+    setNotes(updated);
   };
 
   return (

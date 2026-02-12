@@ -103,18 +103,18 @@ export interface ChatMessage {
   parts: { text: string }[];
 }
 
-export interface AuthUser {
-  id: string;
-  name: string;
-  email: string;
-  academicLevel: 'SSC' | 'HSC';
-  isGuest: boolean;
-  assessment?: AssessmentData;
-}
-
 export interface BraynerState {
-  user: AuthUser | null; // Current active user
-  users: any[]; // List of registered users (braynerApp.users[])
+  user: {
+    current: {
+      id: string;
+      name: string;
+      email: string;
+      academicLevel: 'SSC' | 'HSC';
+      isGuest: boolean;
+      assessment?: AssessmentData;
+    } | null;
+    registered: any[]; // List of registered users for login
+  };
   plan: {
     planStarted: boolean;
     planStartDate: string;

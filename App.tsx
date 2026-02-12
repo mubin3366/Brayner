@@ -1,23 +1,23 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Tab, BraynerState } from './types';
-import Layout from './components/Layout';
-import HomeScreen from './screens/HomeScreen';
-import PracticeScreen from './screens/PracticeScreen';
-import PlanScreen from './screens/PlanScreen';
-import ProgressScreen from './screens/ProgressScreen';
-import ProfileScreen from './screens/ProfileScreen';
-import SplashScreen from './screens/SplashScreen';
-import SettingsScreen from './screens/SettingsScreen';
-import FocusScreen from './screens/FocusScreen';
-import VaultScreen from './screens/VaultScreen';
-import XPLevelScreen from './screens/XPLevelScreen';
-import ProgressReportScreen from './screens/ProgressReportScreen';
-import CoachScreen from './screens/CoachScreen';
-import AuthScreen from './screens/AuthScreen';
-import { getState, isAuthenticated } from './services/localEngine';
-import { applyTheme } from './services/settingsService';
-import { logout } from './services/authService';
+import { Tab, BraynerState } from './types.ts';
+import Layout from './components/Layout.tsx';
+import HomeScreen from './screens/HomeScreen.tsx';
+import PracticeScreen from './screens/PracticeScreen.tsx';
+import PlanScreen from './screens/PlanScreen.tsx';
+import ProgressScreen from './screens/ProgressScreen.tsx';
+import ProfileScreen from './screens/ProfileScreen.tsx';
+import SplashScreen from './screens/SplashScreen.tsx';
+import SettingsScreen from './screens/SettingsScreen.tsx';
+import FocusScreen from './screens/FocusScreen.tsx';
+import VaultScreen from './screens/VaultScreen.tsx';
+import XPLevelScreen from './screens/XPLevelScreen.tsx';
+import ProgressReportScreen from './screens/ProgressReportScreen.tsx';
+import CoachScreen from './screens/CoachScreen.tsx';
+import AuthScreen from './screens/AuthScreen.tsx';
+import { getState, isAuthenticated } from './services/localEngine.ts';
+import { applyTheme } from './services/settingsService.ts';
+import { logout } from './services/authService.ts';
 
 const VALID_TABS: Tab[] = [
   'home', 'practice', 'plan', 'progress', 'profile', 
@@ -27,58 +27,54 @@ const VALID_TABS: Tab[] = [
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [showSplash, setShowSplash] = useState(true);
-  const [state, setState] = useState<BraynerState>(getState());
-  const [isAuth, setIsAuth] = useState(isAuthenticated());
-
-  // Global state sync mechanism
-  const syncState = useCallback(() => {
-    console.log("[BRAYNER] Syncing state and triggering re-render...");
-    const fresh = getState();
-    setState(fresh);
-    setIsAuth(isAuthenticated());
-  }, []);
+  const [state, setState] = useState<BraynerState>(() => getState());
+  const [isAuth, setIsAuth] = useState(() => isAuthenticated());
 
   useEffect(() => {
     applyTheme(state.preferences.theme);
   }, [state.preferences.theme]);
 
+  const syncState = useCallback(() => {
+    const fresh = getState();
+    setState(fresh);
+    setIsAuth(isAuthenticated());
+  }, []);
+
   const navigate = useCallback((tab: Tab) => {
     if (VALID_TABS.includes(tab)) {
       setActiveTab(tab);
-      syncState(); 
     } else {
       setActiveTab('home');
     }
-  }, [syncState]);
+  }, []);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     await logout();
     syncState();
     setActiveTab('home');
-  };
+  }, [syncState]);
 
-  const handleAuthComplete = () => {
+  const handleAuthComplete = useCallback(() => {
     syncState();
-  };
+  }, [syncState]);
 
-  const handleSplashComplete = () => {
+  const handleSplashComplete = useCallback(() => {
     setShowSplash(false);
-  };
+  }, []);
 
-  // Memoize screens and inject the state object so they are reactive to changes
-  const screens = useMemo(() => [
-    { id: 'home', component: <HomeScreen appState={state} setActiveTab={navigate} onUpdate={syncState} /> },
-    { id: 'practice', component: <PracticeScreen appState={state} onUpdate={syncState} /> },
-    { id: 'plan', component: <PlanScreen appState={state} onNavigate={navigate} onUpdate={syncState} /> },
-    { id: 'progress', component: <ProgressScreen appState={state} onNavigate={navigate} /> },
-    { id: 'profile', component: <ProfileScreen appState={state} onLogout={handleLogout} onSettingsChange={syncState} onNavigate={navigate} /> },
-    { id: 'settings', component: <SettingsScreen appState={state} onBack={() => navigate('profile')} onLanguageChange={syncState} /> },
-    { id: 'focus', component: <FocusScreen appState={state} onBack={() => navigate('home')} onUpdate={syncState} /> },
-    { id: 'vault', component: <VaultScreen appState={state} onBack={() => navigate('home')} onUpdate={syncState} /> },
-    { id: 'xp', component: <XPLevelScreen appState={state} onBack={() => navigate('home')} /> },
-    { id: 'report', component: <ProgressReportScreen appState={state} onBack={() => navigate('home')} /> },
-    { id: 'coach', component: <CoachScreen appState={state} onBack={() => navigate('home')} /> },
-  ], [state, syncState, navigate]);
+  const screens = useMemo(() => ({
+    home: <HomeScreen setActiveTab={navigate} />,
+    practice: <PracticeScreen />,
+    plan: <PlanScreen onNavigate={navigate} />,
+    progress: <ProgressScreen onNavigate={navigate} />,
+    profile: <ProfileScreen onLogout={handleLogout} onSettingsChange={syncState} onNavigate={navigate} />,
+    settings: <SettingsScreen onBack={() => navigate('profile')} onLanguageChange={syncState} />,
+    focus: <FocusScreen onBack={() => navigate('home')} />,
+    vault: <VaultScreen onBack={() => navigate('home')} />,
+    xp: <XPLevelScreen onBack={() => navigate('home')} />,
+    report: <ProgressReportScreen onBack={() => navigate('home')} />,
+    coach: <CoachScreen onBack={() => navigate('home')} />
+  }), [navigate, handleLogout, syncState]);
 
   useEffect(() => {
     if (isAuth && !VALID_TABS.includes(activeTab)) {
@@ -95,19 +91,19 @@ const App: React.FC = () => {
   }
 
   return (
-    <Layout activeTab={activeTab} setActiveTab={navigate} appState={state}>
+    <Layout activeTab={activeTab} setActiveTab={navigate}>
       <div className="relative h-full w-full">
-        {screens.map((screen) => (
+        {VALID_TABS.map((tabId) => (
           <div
-            key={screen.id}
+            key={tabId}
             className={`absolute inset-0 transition-opacity duration-300 ease-in-out ${
-              activeTab === screen.id 
+              activeTab === tabId 
                 ? 'opacity-100 z-10 pointer-events-auto' 
                 : 'opacity-0 z-0 pointer-events-none'
             }`}
           >
             <div className="h-full overflow-y-auto hide-scrollbar px-1 pt-2 pb-24 md:pb-12">
-              {screen.component}
+              {screens[tabId as keyof typeof screens]}
             </div>
           </div>
         ))}
